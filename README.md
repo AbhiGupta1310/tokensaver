@@ -1,28 +1,28 @@
-# ⚡ TokenSaver — Claude Optimizer Extension
+# TokenSaver — Claude Optimizer Extension
 
 An ultra-minimal, highly optimized Chrome extension for developers and power users who use Claude daily. TokenSaver silently tracks your usage, saves massive amounts of tokens with local PDF conversion, and lets you seamlessly hand off your entire conversation to ChatGPT or Gemini when you hit your Claude message limit.
 
 ---
 
-## 🚀 Features
+## Features
 
-### 📊 Clean, Unobtrusive Usage Tracking
+### Clean, Unobtrusive Usage Tracking
 - **Native Integration:** A pixel-perfect, ultra-minimal session usage bar injected seamlessly into Claude's UI. It disappears dynamically when you navigate to settings so it never gets in your way.
 - **Smart Estimation:** Calculates real-time usage percentages, remaining messages, and reset times based on Claude's model limits.
 
-### 🔀 Flawless LLM Handoff (ChatGPT & Gemini)
+### Flawless LLM Handoff (ChatGPT & Gemini)
 - **100% Context Preservation:** Bypasses DOM limits by communicating directly with Claude's internal API to instantly grab your complete, un-truncated chat history.
 - **Noise Filtering:** Intelligently strips out Claude's internal "Thoughts" and unsupported artifact fallback text, ensuring your transferred context is pristine.
 - **One-Click Switch:** Easily hand off your entire conversation to ChatGPT or Google Gemini right from the extension popup when Claude puts you in a timeout.
 
-### 📄 Local PDF → Markdown Conversion (80–90% Token Savings)
+### Local PDF → Markdown Conversion (80–90% Token Savings)
 - **Auto-Intercept:** Detects when you upload a PDF to Claude and silently converts it to clean Markdown directly in your browser.
 - **Massive Savings:** Uploading Markdown instead of raw PDFs saves 80–90% of your context window and token usage.
 - **Privacy First:** All PDF parsing happens 100% locally on your machine using `pdf.js` — no external servers or APIs.
 
 ---
 
-## 📦 Installation (Manual Install)
+## Installation (Manual Install)
 
 *Since the extension is not yet available on the Chrome Web Store, you can easily install it manually in less than a minute!*
 
@@ -37,7 +37,7 @@ An ultra-minimal, highly optimized Chrome extension for developers and power use
 
 ---
 
-## 💡 How to Use
+## How to Use
 
 Once installed, TokenSaver integrates seamlessly into your workflow:
 
@@ -47,7 +47,7 @@ Once installed, TokenSaver integrates seamlessly into your workflow:
 
 ---
 
-## 🔧 How It Works Under the Hood
+## How It Works Under the Hood
 
 ### Usage Tracking
 The content script (`content/claude-monitor.js`) uses a highly optimized `MutationObserver` to watch Claude's React DOM state. It calculates token estimates and dynamically mounts/unmounts an elegant UI indicator that matches Claude's native design system.
@@ -60,7 +60,7 @@ Instead of relying on fragile web scraping, TokenSaver uses your active session 
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Pull requests are highly encouraged! 
 - Found a bug? Open an issue.
@@ -68,6 +68,6 @@ Pull requests are highly encouraged!
 
 ---
 
-## 📄 License
+## License
 
 MIT License. Use freely, build upon it, and save those tokens!
