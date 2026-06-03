@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Optimizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --bg2: #111118;
+      --bg3: #1a1a24;
+      --border: #2a2a38;
+      --border2: #3a3a50;
+      --text: #e8e8f0;
+      --text2: #9090a8;
+      --text3: #5a5a72;
+      --accent: #da7756;
+      --accent2: #e8a183;
+      --green: #22d3a0;
+      --orange: #f59e0b;
+      --red: #f43f5e;
+      --yellow: #fbbf24;
+      --glow: rgba(218, 119, 86, 0.15);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 380px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      padding: 16px 18px 14px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 16px var(--glow);
+      flex-shrink: 0;
+    }
+    .header-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    .header-sub {
+      font-size: 11px;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.5px;
+    }
+    .status-dot {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--green);
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.8); }
+    }
+
+    /* ── TABS ── */
+    .tabs {
+      display: flex;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 8px;
+      background: none;
+      border: none;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      position: relative;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab:hover { color: var(--text2); }
+    .tab.active {
+      color: var(--accent2);
+      border-bottom-color: var(--accent);
+    }
+
+    /* ── PANEL ── */
+    .panel { display: none; padding: 16px 18px; }
+    .panel.active { display: block; }
+
+    /* ── USAGE SECTION ── */
+    .usage-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .usage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .usage-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .usage-pct {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-style: italic;
+      font-size: 28px;
+      font-weight: normal;
+      color: var(--text);
+      transition: color 0.5s;
+    }
+    .usage-pct.warn { color: var(--orange); }
+    .usage-pct.danger { color: var(--red); text-shadow: 0 0 10px rgba(244,63,94,0.4); }
+
+    /* Progress bar */
+    .progress-track {
+      height: 4px;
+      background: linear-gradient(90deg, #4a1919 0%, rgba(74,25,25,0) 100%);
+      border-radius: 2px;
+      overflow: visible;
+      margin-bottom: 8px;
+      position: relative;
+    }
+    .progress-fill {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      border-radius: 2px 0 0 2px;
+      background: #3b82f6;
+      transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.5s;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      right: -6px; top: 50%;
+      transform: translateY(-50%);
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #e8e8f0;
+      border: 3px solid var(--bg3);
+    }
+    .progress-fill.warn { background: linear-gradient(90deg, var(--orange), #fb923c); }
+    .progress-fill.danger { background: linear-gradient(90deg, var(--red), #fb7185); }
+
+    .usage-meta {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+    }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .stat-box {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 10px 8px;
+      text-align: center;
+    }
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent2);
+      display: block;
+    }
+    .stat-label {
+      font-size: 9px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-top: 2px;
+      display: block;
+    }
+
+    /* Switch LLM button */
+    .switch-btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(244,63,94,0.15), rgba(251,146,60,0.1));
+      border: 1px solid rgba(244,63,94,0.3);
+      border-radius: 8px;
+      color: var(--red);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: left;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .switch-btn:hover {
+      background: linear-gradient(135deg, rgba(244,63,94,0.25), rgba(251,146,60,0.15));
+      border-color: rgba(244,63,94,0.5);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(244,63,94,0.15);
+    }
+    .switch-btn .btn-icon { font-size: 18px; }
+    .switch-btn .btn-text { flex: 1; }
+    .switch-btn .btn-sub { display: block; font-size: 9px; color: var(--text3); font-weight: 400; margin-top: 2px; text-transform: none; letter-spacing: 0; }
+    .switch-btn.ready {
+      background: linear-gradient(135deg, rgba(34,211,160,0.12), rgba(124,106,255,0.08));
+      border-color: rgba(34,211,160,0.3);
+      color: var(--green);
+    }
+    .switch-btn.ready:hover {
+      background: linear-gradient(135deg, rgba(34,211,160,0.2), rgba(124,106,255,0.15));
+      border-color: rgba(34,211,160,0.5);
+      box-shadow: 0 4px 16px rgba(34,211,160,0.15);
+    }
+    
+    /* Multi-LLM Handoff Grid */
+    .handoff-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .handoff-btn {
+      padding: 10px 4px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text2);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+    .handoff-btn:hover {
+      background: rgba(124,106,255,0.1);
+      border-color: rgba(124,106,255,0.3);
+      color: var(--accent2);
+      transform: translateY(-1px);
+    }
+    .handoff-btn .btn-icon { font-size: 16px; margin-bottom: 2px; }
+    .handoff-btn.ready {
+      background: linear-gradient(135deg, rgba(34,211,160,0.12), rgba(124,106,255,0.08));
+      border-color: rgba(34,211,160,0.3);
+      color: var(--green);
+    }
+
+    /* ── PDF SECTION ── */
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .toggle-info { flex: 1; }
+    .toggle-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      display: block;
+    }
+    .toggle-desc {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 1px;
+      display: block;
+    }
+    .toggle {
+      position: relative;
+      width: 36px; height: 20px;
+      flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border2);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.3s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--accent); }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    .savings-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      background: rgba(34,211,160,0.1);
+      border: 1px solid rgba(34,211,160,0.25);
+      border-radius: 20px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    /* PDF Drop Zone */
+    .drop-zone {
+      border: 1.5px dashed var(--border2);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 10px;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(124,106,255,0.05);
+    }
+    .drop-icon { font-size: 24px; margin-bottom: 6px; }
+    .drop-text { font-size: 11px; color: var(--text2); }
+    .drop-sub { font-size: 10px; color: var(--text3); margin-top: 3px; }
+    #pdf-input { display: none; }
+
+    .convert-result {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: none;
+    }
+    .convert-result.show { display: block; }
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .result-title { font-size: 11px; font-weight: 500; color: var(--green); }
+    .copy-btn {
+      padding: 4px 10px;
+      background: rgba(124,106,255,0.15);
+      border: 1px solid rgba(124,106,255,0.3);
+      border-radius: 5px;
+      color: var(--accent2);
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { background: rgba(124,106,255,0.25); }
+    .result-stats { font-size: 10px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+    .result-preview {
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--bg);
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text2);
+      max-height: 80px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    /* ── PROMPT OPTIMIZER ── */
+    .prompt-input-wrap {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .prompt-textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .prompt-textarea:focus { border-color: var(--accent); }
+    .prompt-textarea::placeholder { color: var(--text3); }
+    .char-count {
+      position: absolute;
+      bottom: 8px; right: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text3);
+    }
+
+    .optimize-btn {
+      width: 100%;
+      padding: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .optimize-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(124,106,255,0.35);
+    }
+    .optimize-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .optimize-btn .spinner {
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    .optimize-btn.loading .spinner { display: block; }
+    .optimize-btn.loading .btn-label { opacity: 0.6; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .optimized-card {
+      background: var(--bg3);
+      border: 1px solid rgba(124,106,255,0.2);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: none;
+    }
+    .optimized-card.show { display: block; }
+    .opt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .opt-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--accent2);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+    .opt-savings {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--green);
+      background: rgba(34,211,160,0.1);
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+    .optimized-text {
+      font-size: 11px;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .opt-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .opt-btn {
+      flex: 1;
+      padding: 6px;
+      border-radius: 6px;
+      border: 1px solid var(--border2);
+      background: var(--bg2);
+      color: var(--text2);
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
+    }
+    .opt-btn:hover { border-color: var(--accent); color: var(--accent2); }
+    .opt-btn.primary {
+      background: rgba(124,106,255,0.15);
+      border-color: rgba(124,106,255,0.35);
+      color: var(--accent2);
+    }
+
+    /* ── SETTINGS ── */
+    .settings-section { margin-bottom: 16px; }
+    .setting-item {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .setting-item:last-child { border-bottom: none; }
+    .setting-name {
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .setting-desc {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+    .session-history {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .session-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+    }
+    .session-bar {
+      flex: 1;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .session-fill {
+      height: 100%;
+      border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+    .session-pct {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      width: 32px;
+      text-align: right;
+    }
+    .session-label {
+      font-size: 10px;
+      color: var(--text3);
+      width: 50px;
+    }
+
+    /* Notification box */
+    .notif-box {
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      font-size: 11px;
+      display: none;
+    }
+    .notif-box.show { display: flex; align-items: center; gap: 8px; }
+    .notif-box.success {
+      background: rgba(34,211,160,0.1);
+      border: 1px solid rgba(34,211,160,0.25);
+      color: var(--green);
+    }
+    .notif-box.error {
+      background: rgba(244,63,94,0.1);
+      border: 1px solid rgba(244,63,94,0.25);
+      color: var(--red);
+    }
+
+    /* Progress loader */
+    .loader-bar {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      display: none;
+    }
+    .loader-bar.show { display: block; }
+    .loader-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 2px;
+      animation: loading 1.2s ease-in-out infinite;
+    }
+    @keyframes loading {
+      0% { width: 0%; margin-left: 0; }
+      50% { width: 60%; }
+      100% { width: 0%; margin-left: 100%; }
+    }
+
+    /* Footer */
+    .footer {
+      padding: 8px 18px;
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text3);
+    }
+    .footer-version {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text3);
+      padding: 2px 6px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+
+  <div>
+    <div class="header-title">TokenSaver</div>
+    <div class="header-sub">claude optimizer</div>
+  </div>
+  <div class="status-dot">
+    <div class="dot" id="status-dot"></div>
+    <span id="status-text">active</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="usage">Usage</button>
+  <button class="tab" data-tab="pdf">PDF</button>
+  <button class="tab" data-tab="settings">Settings</button>
+</div>
+
+<!-- ── TAB: USAGE ── -->
+<div class="panel active" id="tab-usage">
+
+  <div class="usage-card">
+    <div class="usage-header">
+      <div>
+        <div class="usage-label">Session Usage</div>
+        <div style="font-size:10px;color:var(--text3);font-family:JetBrains Mono,monospace;margin-top:2px" id="session-msgs">~0 / 18.2 msgs</div>
+      </div>
+      <div class="usage-pct" id="usage-pct">0%</div>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="usage-meta">
+      <span id="tokens-used">0 tokens used</span>
+      <span id="tokens-left">~18,200 left</span>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box">
+      <span class="stat-val" id="stat-msgs">0</span>
+      <span class="stat-label">Messages</span>
+    </div>
+    <div class="stat-box">
+      <span class="stat-val" id="stat-saved">0</span>
+      <span class="stat-label">Saved</span>
+    </div>
+  </div>
+
+  <div class="section-title">Handoff Conversation (Copies Context)</div>
+  <div class="handoff-grid" id="handoff-grid">
+    <button class="handoff-btn" id="btn-switch-chatgpt">
+      <span class="btn-icon">G</span>
+      <span class="btn-text">ChatGPT</span>
+    </button>
+    <button class="handoff-btn" id="btn-switch-gemini">
+      <span class="btn-icon">✦</span>
+      <span class="btn-text">Gemini</span>
+    </button>
+  </div>
+
+
+
+</div>
+
+<!-- ── TAB: PDF ── -->
+<div class="panel" id="tab-pdf">
+  <div class="toggle-row">
+    <div class="toggle-info">
+      <span class="toggle-name">Auto PDF → Markdown</span>
+      <span class="toggle-desc">Intercept PDF uploads & convert to text</span>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggle-pdf" checked>
+      <span class="toggle-slider"></span>
+    </label>
+  </div>
+
+  <div class="savings-badge">
+    💡 Saves 80–90% of tokens vs raw PDF uploads
+  </div>
+
+  <div style="margin-top:14px">
+    <div class="section-title">Convert PDF Manually</div>
+
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-icon">📎</div>
+      <div class="drop-text">Drop PDF here or click to browse</div>
+      <div class="drop-sub">Converts to clean Markdown instantly</div>
+    </div>
+    <input type="file" id="pdf-input" accept=".pdf">
+
+    <div class="loader-bar" id="pdf-loader"><div class="loader-fill"></div></div>
+
+    <div class="convert-result" id="convert-result">
+      <div class="result-header">
+        <span class="result-title">✅ Converted Successfully</span>
+        <button class="copy-btn" id="copy-md-btn">COPY MD</button>
+      </div>
+      <div class="result-stats" id="result-stats"></div>
+      <div class="result-preview" id="result-preview"></div>
+    </div>
+
+    <div class="notif-box" id="pdf-notif"></div>
+  </div>
+
+</div>
+
+
+
+<!-- ── TAB: SETTINGS ── -->
+<div class="panel" id="tab-settings">
+  <div class="section-title">Features</div>
+  <div class="settings-section">
+    <div class="setting-item">
+      <div>
+        <div class="setting-name">Usage tracking</div>
+        <div class="setting-desc">Monitor message count & token usage</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="set-tracking" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-item">
+      <div>
+        <div class="setting-name">PDF auto-intercept</div>
+        <div class="setting-desc">Convert PDFs before uploading</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="set-pdf" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-item">
+      <div>
+        <div class="setting-name">Low usage alerts</div>
+        <div class="setting-desc">Notify at 75% and 90% usage</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="set-alerts" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="setting-item">
+      <div>
+        <div class="setting-name">Smart summaries</div>
+        <div class="setting-desc">Summarize conversation when switching LLM</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="set-summary" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <span class="footer-text">Claude Optimizer</span>
+  <span class="footer-version">v1.0.0</span>
+</div>
+
+<script src="../lib/pdf.min.js"></script>
+<script src="../lib/pdf-layout-parser.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
